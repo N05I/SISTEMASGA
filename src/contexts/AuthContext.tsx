@@ -1,9 +1,17 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
-import { User, mockUsers } from '../data/mockData';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { supabase } from '../lib/supabase';
+
+interface User {
+  id: string;
+  email: string;
+  role: string;
+  name: string;
+  avatar?: string;
+}
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => boolean;
+  login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
   isAuthenticated: boolean;
 }
@@ -11,19 +19,32 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    const saved = localStorage.getItem('sga_user');
+    return saved ? JSON.parse(saved) : null;
+  });
 
-  const login = (email: string, password: string): boolean => {
-    const foundUser = mockUsers.find(
-      u => u.email === email && u.password === password
-    );
+  const login = async (email: string, password: string): Promise<boolean> => {
+    try {
+      console.log('Intentando login con:', email);
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', email)
+        .eq('password', password)
+        .single();
 
-    if (foundUser) {
-      setUser(foundUser);
-      localStorage.setItem('sga_user', JSON.stringify(foundUser));
+      console.log('Resultado:', data, 'Error:', error);
+
+      if (error || !data) return false;
+
+      setUser(data);
+      localStorage.setItem('sga_user', JSON.stringify(data));
       return true;
+    } catch (e) {
+      console.error('Error en login:', e);
+      return false;
     }
-    return false;
   };
 
   const logout = () => {
@@ -32,12 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{
-      user,
-      login,
-      logout,
-      isAuthenticated: !!user
-    }}>
+    <AuthContext.Provider value={{ user, login, logout, isAuthenticated: !!user }}>
       {children}
     </AuthContext.Provider>
   );
@@ -45,8 +61,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within AuthProvider');
   return context;
 }

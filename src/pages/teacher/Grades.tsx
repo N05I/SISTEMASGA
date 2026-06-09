@@ -1,67 +1,71 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
-  Box,
-  Paper,
-  Typography,
-  Button,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  MenuItem,
-  Chip
+  Box, Paper, Typography, Button, Table, TableBody, TableCell,
+  TableContainer, TableHead, TableRow, IconButton, Dialog,
+  DialogTitle, DialogContent, DialogActions, TextField, MenuItem, Chip
 } from '@mui/material';
 import { Add, Edit } from '@mui/icons-material';
-import { mockGrades, mockStudents, mockCourses } from '../../data/mockData';
+import { supabase } from '../../lib/supabase';
 
 export default function Grades() {
-  const [grades, setGrades] = useState(mockGrades);
+  const [grades, setGrades] = useState<any[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
+  const [courses, setCourses] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
   const [editingGrade, setEditingGrade] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+
+  const fetchAll = async () => {
+    const [g, s, c] = await Promise.all([
+      supabase.from('grades').select('*'),
+      supabase.from('students').select('*'),
+      supabase.from('courses').select('*'),
+    ]);
+    if (g.data) setGrades(g.data);
+    if (s.data) setStudents(s.data);
+    if (c.data) setCourses(c.data);
+  };
+
+  useEffect(() => { fetchAll(); }, []);
 
   const handleOpen = (grade?: any) => {
     setEditingGrade(grade || {
-      id: '',
-      studentId: '',
-      courseId: '',
-      period: 'Bimestre 1',
-      score: 0,
-      comments: '',
-      date: new Date().toISOString().split('T')[0]
+      student_id: '', course_id: '', period: 'Bimestre 1',
+      score: 0, comments: '', date: new Date().toISOString().split('T')[0]
     });
     setOpen(true);
   };
 
-  const handleClose = () => {
-    setOpen(false);
-    setEditingGrade(null);
-  };
+  const handleClose = () => { setOpen(false); setEditingGrade(null); };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    setLoading(true);
+    const payload = {
+      student_id: editingGrade.student_id,
+      course_id: editingGrade.course_id,
+      period: editingGrade.period,
+      score: editingGrade.score,
+      comments: editingGrade.comments,
+      date: editingGrade.date,
+    };
     if (editingGrade.id) {
-      setGrades(grades.map(g => g.id === editingGrade.id ? editingGrade : g));
+      await supabase.from('grades').update(payload).eq('id', editingGrade.id);
     } else {
-      setGrades([...grades, { ...editingGrade, id: `g${Date.now()}` }]);
+      await supabase.from('grades').insert(payload);
     }
+    await fetchAll();
+    setLoading(false);
     handleClose();
   };
 
-  const getStudentName = (studentId: string) => {
-    const student = mockStudents.find(s => s.id === studentId);
-    return student ? `${student.firstName} ${student.lastName}` : 'N/A';
+  const getStudentName = (id: string) => {
+    const s = students.find(s => s.id === id);
+    return s ? `${s.first_name} ${s.last_name}` : 'N/A';
   };
 
-  const getCourseName = (courseId: string) => {
-    const course = mockCourses.find(c => c.id === courseId);
-    return course?.name || 'N/A';
+  const getCourseName = (id: string) => {
+    const c = courses.find(c => c.id === id);
+    return c?.name || 'N/A';
   };
 
   const getScoreColor = (score: number) => {
@@ -80,11 +84,7 @@ export default function Grades() {
             Validación de rango (0-20) | Historial completo
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<Add />}
-          onClick={() => handleOpen()}
-        >
+        <Button variant="contained" startIcon={<Add />} onClick={() => handleOpen()}>
           Nueva Calificación
         </Button>
       </Box>
@@ -103,24 +103,24 @@ export default function Grades() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {grades.map((grade) => (
+            {grades.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} align="center">
+                  <Typography color="text.secondary">No hay calificaciones registradas</Typography>
+                </TableCell>
+              </TableRow>
+            ) : grades.map((grade) => (
               <TableRow key={grade.id}>
-                <TableCell>{getStudentName(grade.studentId)}</TableCell>
-                <TableCell>{getCourseName(grade.courseId)}</TableCell>
+                <TableCell>{getStudentName(grade.student_id)}</TableCell>
+                <TableCell>{getCourseName(grade.course_id)}</TableCell>
                 <TableCell>{grade.period}</TableCell>
                 <TableCell>
-                  <Chip
-                    label={grade.score}
-                    color={getScoreColor(grade.score)}
-                    size="small"
-                  />
+                  <Chip label={grade.score} color={getScoreColor(grade.score)} size="small" />
                 </TableCell>
                 <TableCell>{new Date(grade.date).toLocaleDateString()}</TableCell>
                 <TableCell>{grade.comments || '-'}</TableCell>
                 <TableCell align="right">
-                  <IconButton size="small" onClick={() => handleOpen(grade)}>
-                    <Edit />
-                  </IconButton>
+                  <IconButton size="small" onClick={() => handleOpen(grade)}><Edit /></IconButton>
                 </TableCell>
               </TableRow>
             ))}
@@ -129,86 +129,47 @@ export default function Grades() {
       </TableContainer>
 
       <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-        <DialogTitle>
-          {editingGrade?.id ? 'Editar Calificación' : 'Nueva Calificación'}
-        </DialogTitle>
+        <DialogTitle>{editingGrade?.id ? 'Editar Calificación' : 'Nueva Calificación'}</DialogTitle>
         <DialogContent>
-          <TextField
-            margin="normal"
-            fullWidth
-            select
-            label="Estudiante"
-            value={editingGrade?.studentId || ''}
-            onChange={(e) => setEditingGrade({ ...editingGrade, studentId: e.target.value })}
-          >
-            {mockStudents.map(student => (
-              <MenuItem key={student.id} value={student.id}>
-                {student.firstName} {student.lastName} ({student.grade}° {student.section})
+          <TextField margin="normal" fullWidth select label="Estudiante"
+            value={editingGrade?.student_id || ''}
+            onChange={(e) => setEditingGrade({ ...editingGrade, student_id: e.target.value })}>
+            {students.map(s => (
+              <MenuItem key={s.id} value={s.id}>
+                {s.first_name} {s.last_name} ({s.grade}° {s.section})
               </MenuItem>
             ))}
           </TextField>
-          <TextField
-            margin="normal"
-            fullWidth
-            select
-            label="Curso"
-            value={editingGrade?.courseId || ''}
-            onChange={(e) => setEditingGrade({ ...editingGrade, courseId: e.target.value })}
-          >
-            {mockCourses.map(course => (
-              <MenuItem key={course.id} value={course.id}>
-                {course.name}
-              </MenuItem>
-            ))}
+          <TextField margin="normal" fullWidth select label="Curso"
+            value={editingGrade?.course_id || ''}
+            onChange={(e) => setEditingGrade({ ...editingGrade, course_id: e.target.value })}>
+            {courses.length === 0
+              ? <MenuItem disabled>No hay cursos — agrégalos en Supabase</MenuItem>
+              : courses.map(c => <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>)
+            }
           </TextField>
-          <TextField
-            margin="normal"
-            fullWidth
-            select
-            label="Período"
+          <TextField margin="normal" fullWidth select label="Período"
             value={editingGrade?.period || 'Bimestre 1'}
-            onChange={(e) => setEditingGrade({ ...editingGrade, period: e.target.value })}
-          >
-            <MenuItem value="Bimestre 1">Bimestre 1</MenuItem>
-            <MenuItem value="Bimestre 2">Bimestre 2</MenuItem>
-            <MenuItem value="Bimestre 3">Bimestre 3</MenuItem>
-            <MenuItem value="Bimestre 4">Bimestre 4</MenuItem>
+            onChange={(e) => setEditingGrade({ ...editingGrade, period: e.target.value })}>
+            {['Bimestre 1','Bimestre 2','Bimestre 3','Bimestre 4'].map(p => (
+              <MenuItem key={p} value={p}>{p}</MenuItem>
+            ))}
           </TextField>
-          <TextField
-            margin="normal"
-            fullWidth
-            label="Nota (0-20)"
-            type="number"
+          <TextField margin="normal" fullWidth label="Nota (0-20)" type="number"
             inputProps={{ min: 0, max: 20 }}
             value={editingGrade?.score || 0}
-            onChange={(e) => {
-              const score = Math.min(20, Math.max(0, Number(e.target.value)));
-              setEditingGrade({ ...editingGrade, score });
-            }}
-          />
-          <TextField
-            margin="normal"
-            fullWidth
-            label="Fecha"
-            type="date"
-            InputLabelProps={{ shrink: true }}
-            value={editingGrade?.date || ''}
-            onChange={(e) => setEditingGrade({ ...editingGrade, date: e.target.value })}
-          />
-          <TextField
-            margin="normal"
-            fullWidth
-            multiline
-            rows={3}
-            label="Comentarios"
+            onChange={(e) => setEditingGrade({ ...editingGrade, score: Math.min(20, Math.max(0, Number(e.target.value))) })} />
+          <TextField margin="normal" fullWidth label="Fecha" type="date"
+            InputLabelProps={{ shrink: true }} value={editingGrade?.date || ''}
+            onChange={(e) => setEditingGrade({ ...editingGrade, date: e.target.value })} />
+          <TextField margin="normal" fullWidth multiline rows={3} label="Comentarios"
             value={editingGrade?.comments || ''}
-            onChange={(e) => setEditingGrade({ ...editingGrade, comments: e.target.value })}
-          />
+            onChange={(e) => setEditingGrade({ ...editingGrade, comments: e.target.value })} />
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClose}>Cancelar</Button>
-          <Button onClick={handleSave} variant="contained">
-            Guardar
+          <Button onClick={handleSave} variant="contained" disabled={loading}>
+            {loading ? 'Guardando...' : 'Guardar'}
           </Button>
         </DialogActions>
       </Dialog>

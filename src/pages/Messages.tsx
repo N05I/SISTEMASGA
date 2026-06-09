@@ -1,71 +1,62 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import {
-  Box,
-  Paper,
-  Typography,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemAvatar,
-  Avatar,
-  Divider,
-  TextField,
-  Button,
-  Chip,
-  Grid,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  MenuItem
+  Box, Paper, Typography, List, ListItem, ListItemText,
+  ListItemAvatar, Avatar, Divider, TextField, Button, Chip,
+  Grid, Dialog, DialogTitle, DialogContent, DialogActions, MenuItem
 } from '@mui/material';
 import { Send, Mail, MailOutline } from '@mui/icons-material';
-import { mockMessages, mockUsers } from '../data/mockData';
+import { supabase } from '../lib/supabase';
 
 export default function Messages() {
   const { user } = useAuth();
-  const [messages, setMessages] = useState(mockMessages);
+  const [messages, setMessages] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [selectedMessage, setSelectedMessage] = useState<any>(null);
   const [openCompose, setOpenCompose] = useState(false);
-  const [newMessage, setNewMessage] = useState({
-    toId: '',
-    subject: '',
-    content: ''
-  });
+  const [newMessage, setNewMessage] = useState({ receiver_id: '', subject: '', body: '' });
+  const [loading, setLoading] = useState(false);
 
-  const myMessages = messages.filter(m => m.toId === user?.id || m.fromId === user?.id);
+  const fetchAll = async () => {
+    const [m, u] = await Promise.all([
+      supabase.from('messages').select('*').or(`sender_id.eq.${user?.id},receiver_id.eq.${user?.id}`).order('created_at', { ascending: false }),
+      supabase.from('users').select('*'),
+    ]);
+    if (m.data) setMessages(m.data);
+    if (u.data) setUsers(u.data);
+  };
 
-  const handleSelectMessage = (message: any) => {
+  useEffect(() => { if (user?.id) fetchAll(); }, [user]);
+
+  const handleSelectMessage = async (message: any) => {
     setSelectedMessage(message);
-    if (!message.read && message.toId === user?.id) {
+    if (!message.read && message.receiver_id === user?.id) {
+      await supabase.from('messages').update({ read: true }).eq('id', message.id);
       setMessages(messages.map(m => m.id === message.id ? { ...m, read: true } : m));
     }
   };
 
-  const handleSendMessage = () => {
-    const message = {
-      id: `m${Date.now()}`,
-      fromId: user?.id || '',
-      toId: newMessage.toId,
+  const handleSend = async () => {
+    setLoading(true);
+    await supabase.from('messages').insert({
+      sender_id: user?.id,
+      receiver_id: newMessage.receiver_id,
       subject: newMessage.subject,
-      content: newMessage.content,
-      date: new Date().toISOString(),
-      read: false
-    };
-    setMessages([...messages, message]);
+      body: newMessage.body,
+    });
+    await fetchAll();
+    setLoading(false);
     setOpenCompose(false);
-    setNewMessage({ toId: '', subject: '', content: '' });
+    setNewMessage({ receiver_id: '', subject: '', body: '' });
   };
 
-  const getUserName = (userId: string) => {
-    const foundUser = mockUsers.find(u => u.id === userId);
-    return foundUser?.name || 'Desconocido';
+  const getUserName = (id: string) => {
+    const u = users.find(u => u.id === id);
+    return u?.name || 'Desconocido';
   };
 
-  const unreadCount = myMessages.filter(m => !m.read && m.toId === user?.id).length;
-
-  const availableUsers = mockUsers.filter(u => u.id !== user?.id);
+  const unreadCount = messages.filter(m => !m.read && m.receiver_id === user?.id).length;
+  const availableUsers = users.filter(u => u.id !== user?.id);
 
   return (
     <Box>
@@ -76,11 +67,7 @@ export default function Messages() {
             Canal privado entre actores del sistema
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<Send />}
-          onClick={() => setOpenCompose(true)}
-        >
+        <Button variant="contained" startIcon={<Send />} onClick={() => setOpenCompose(true)}>
           Nuevo Mensaje
         </Button>
       </Box>
@@ -92,57 +79,49 @@ export default function Messages() {
               <Typography variant="h6">
                 Bandeja de Entrada
                 {unreadCount > 0 && (
-                  <Chip
-                    label={unreadCount}
-                    color="error"
-                    size="small"
-                    sx={{ ml: 1 }}
-                  />
+                  <Chip label={unreadCount} color="error" size="small" sx={{ ml: 1 }} />
                 )}
               </Typography>
             </Box>
             <List>
-              {myMessages.length === 0 ? (
+              {messages.length === 0 ? (
                 <ListItem>
-                  <ListItemText
-                    primary="No hay mensajes"
-                    secondary="Comienza una conversación"
-                  />
+                  <ListItemText primary="No hay mensajes" secondary="Comienza una conversación" />
                 </ListItem>
-              ) : (
-                myMessages.map((message) => (
-                  <Box key={message.id}>
-                    <ListItem
-                      button
-                      onClick={() => handleSelectMessage(message)}
-                      selected={selectedMessage?.id === message.id}
-                    >
-                      <ListItemAvatar>
-                        <Avatar>
-                          {!message.read && message.toId === user?.id ? <Mail /> : <MailOutline />}
-                        </Avatar>
-                      </ListItemAvatar>
-                      <ListItemText
-                        primary={
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography
-                              variant="body2"
-                              fontWeight={!message.read && message.toId === user?.id ? 'bold' : 'normal'}
-                            >
-                              {message.fromId === user?.id ? `Para: ${getUserName(message.toId)}` : `De: ${getUserName(message.fromId)}`}
-                            </Typography>
-                            {!message.read && message.toId === user?.id && (
-                              <Chip label="Nuevo" color="primary" size="small" />
-                            )}
-                          </Box>
-                        }
-                        secondary={message.subject}
-                      />
-                    </ListItem>
-                    <Divider />
-                  </Box>
-                ))
-              )}
+              ) : messages.map((message) => (
+                <Box key={message.id}>
+                  <ListItem
+                    button
+                    onClick={() => handleSelectMessage(message)}
+                    selected={selectedMessage?.id === message.id}
+                  >
+                    <ListItemAvatar>
+                      <Avatar>
+                        {!message.read && message.receiver_id === user?.id ? <Mail /> : <MailOutline />}
+                      </Avatar>
+                    </ListItemAvatar>
+                    <ListItemText
+                      primary={
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography
+                            variant="body2"
+                            fontWeight={!message.read && message.receiver_id === user?.id ? 'bold' : 'normal'}
+                          >
+                            {message.sender_id === user?.id
+                              ? `Para: ${getUserName(message.receiver_id)}`
+                              : `De: ${getUserName(message.sender_id)}`}
+                          </Typography>
+                          {!message.read && message.receiver_id === user?.id && (
+                            <Chip label="Nuevo" color="primary" size="small" />
+                          )}
+                        </Box>
+                      }
+                      secondary={message.subject}
+                    />
+                  </ListItem>
+                  <Divider />
+                </Box>
+              ))}
             </List>
           </Paper>
         </Grid>
@@ -150,20 +129,18 @@ export default function Messages() {
         <Grid item xs={12} md={8}>
           {selectedMessage ? (
             <Paper sx={{ p: 3 }}>
-              <Typography variant="h5" gutterBottom>
-                {selectedMessage.subject}
-              </Typography>
+              <Typography variant="h5" gutterBottom>{selectedMessage.subject}</Typography>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
                 <Typography variant="body2" color="text.secondary">
-                  De: {getUserName(selectedMessage.fromId)}
+                  De: {getUserName(selectedMessage.sender_id)}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  {new Date(selectedMessage.date).toLocaleString()}
+                  {new Date(selectedMessage.created_at).toLocaleString()}
                 </Typography>
               </Box>
               <Divider sx={{ mb: 3 }} />
               <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
-                {selectedMessage.content}
+                {selectedMessage.body}
               </Typography>
             </Paper>
           ) : (
@@ -180,46 +157,27 @@ export default function Messages() {
       <Dialog open={openCompose} onClose={() => setOpenCompose(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Nuevo Mensaje</DialogTitle>
         <DialogContent>
-          <TextField
-            margin="normal"
-            fullWidth
-            select
-            label="Destinatario"
-            value={newMessage.toId}
-            onChange={(e) => setNewMessage({ ...newMessage, toId: e.target.value })}
-          >
+          <TextField margin="normal" fullWidth select label="Destinatario"
+            value={newMessage.receiver_id}
+            onChange={(e) => setNewMessage({ ...newMessage, receiver_id: e.target.value })}>
             {availableUsers.map(u => (
               <MenuItem key={u.id} value={u.id}>
                 {u.name} ({u.role === 'admin' ? 'Administrador' : u.role === 'teacher' ? 'Docente' : 'Padre'})
               </MenuItem>
             ))}
           </TextField>
-          <TextField
-            margin="normal"
-            fullWidth
-            label="Asunto"
+          <TextField margin="normal" fullWidth label="Asunto"
             value={newMessage.subject}
-            onChange={(e) => setNewMessage({ ...newMessage, subject: e.target.value })}
-          />
-          <TextField
-            margin="normal"
-            fullWidth
-            multiline
-            rows={6}
-            label="Mensaje"
-            value={newMessage.content}
-            onChange={(e) => setNewMessage({ ...newMessage, content: e.target.value })}
-          />
+            onChange={(e) => setNewMessage({ ...newMessage, subject: e.target.value })} />
+          <TextField margin="normal" fullWidth multiline rows={6} label="Mensaje"
+            value={newMessage.body}
+            onChange={(e) => setNewMessage({ ...newMessage, body: e.target.value })} />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenCompose(false)}>Cancelar</Button>
-          <Button
-            onClick={handleSendMessage}
-            variant="contained"
-            startIcon={<Send />}
-            disabled={!newMessage.toId || !newMessage.subject || !newMessage.content}
-          >
-            Enviar
+          <Button onClick={handleSend} variant="contained" startIcon={<Send />}
+            disabled={!newMessage.receiver_id || !newMessage.subject || !newMessage.body || loading}>
+            {loading ? 'Enviando...' : 'Enviar'}
           </Button>
         </DialogActions>
       </Dialog>
