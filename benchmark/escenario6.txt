@@ -1,0 +1,8 @@
+Running 1m test @ https://sistemasga.online/
+  4 threads and 20 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency   211.70ms   34.17ms 755.45ms   95.40%
+    Req/Sec    24.08     10.87    50.00     55.48%
+  5650 requests in 1.00m, 11.93MB read
+Requests/sec:     94.11
+Transfer/sec:    203.42KB

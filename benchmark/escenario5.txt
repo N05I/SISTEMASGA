@@ -1,0 +1,48 @@
+This is ApacheBench, Version 2.3 <$Revision: 1923142 $>
+Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
+Licensed to The Apache Software Foundation, http://www.apache.org/
+
+Benchmarking ndtbbjpopysomtcucgni.supabase.co (be patient)
+Completed 100 requests
+Completed 200 requests
+Completed 300 requests
+Finished 300 requests
+
+
+Server Software:        cloudflare
+Server Hostname:        ndtbbjpopysomtcucgni.supabase.co
+Server Port:            443
+SSL/TLS Protocol:       TLSv1.3,TLS_AES_256_GCM_SHA384,256,256
+TLS Server Name:        ndtbbjpopysomtcucgni.supabase.co
+
+Document Path:          /rest/v1/users?email=eq.admin%40colegio.edu&select=*
+Document Length:        Variable
+
+Concurrency Level:      30
+Time taken for tests:   7.465 seconds
+Complete requests:      300
+Failed requests:        0
+Total transferred:      346754 bytes
+HTML transferred:       57300 bytes
+Requests per second:    40.19 [#/sec] (mean)
+Time per request:       746.514 [ms] (mean)
+Time per request:       24.884 [ms] (mean, across all concurrent requests)
+Transfer rate:          45.36 [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:       86  212 105.2    236    1250
+Processing:   233  366 146.3    331    1280
+Waiting:      232  366 146.2    331    1277
+Total:        331  578 178.5    585    1577
+
+Percentage of the requests served within a certain time (ms)
+  50%    585
+  66%    601
+  75%    622
+  80%    646
+  90%    745
+  95%   1001
+  98%   1035
+  99%   1439
+ 100%   1577 (longest request)

@@ -1,0 +1,45 @@
+This is ApacheBench, Version 2.3 <$Revision: 1923142 $>
+Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
+Licensed to The Apache Software Foundation, http://www.apache.org/
+
+Benchmarking sistemasga.online (be patient)
+Finished 441 requests
+
+
+Server Software:        cloudflare
+Server Hostname:        sistemasga.online
+Server Port:            443
+SSL/TLS Protocol:       TLSv1.3,TLS_AES_256_GCM_SHA384,256,256
+TLS Server Name:        sistemasga.online
+
+Document Path:          /
+Document Length:        813 bytes
+
+Concurrency Level:      10
+Time taken for tests:   30.050 seconds
+Complete requests:      441
+Failed requests:        0
+Total transferred:      697456 bytes
+HTML transferred:       360159 bytes
+Requests per second:    14.68 [#/sec] (mean)
+Time per request:       681.406 [ms] (mean)
+Time per request:       68.141 [ms] (mean, across all concurrent requests)
+Transfer rate:          22.67 [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:      211  281 116.2    257    1435
+Processing:   322  373  46.6    360     815
+Waiting:      322  373  46.5    359     815
+Total:        553  654 127.6    619    1808
+
+Percentage of the requests served within a certain time (ms)
+  50%    619
+  66%    642
+  75%    667
+  80%    690
+  90%    744
+  95%    818
+  98%    871
+  99%   1354
+ 100%   1808 (longest request)

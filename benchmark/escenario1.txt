@@ -1,0 +1,13 @@
+This is ApacheBench, Version 2.3 <$Revision: 1923142 $>
+Server Software:        cloudflare
+Server Hostname:        sistemasga.online
+Server Port:            443
+SSL/TLS Protocol:       TLSv1.3,TLS_AES_256_GCM_SHA384,256,256
+Document Path:          /
+Concurrency Level:      1
+Time taken for tests:   33.958 seconds
+Complete requests:      50
+Failed requests:        0
+Requests per second:    1.47 [#/sec] (mean)
+Time per request:       679.155 [ms] (mean)
+Transfer rate:          2.26 [Kbytes/sec] received

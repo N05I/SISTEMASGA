@@ -1,0 +1,8 @@
+Running 1m test @ https://ndtbbjpopysomtcucgni.supabase.co/rest/v1/grades?select=*
+  4 threads and 20 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency   179.42ms   33.42ms 585.08ms   93.90%
+    Req/Sec    28.45     11.57    50.00     77.62%
+  6685 requests in 1.00m, 5.88MB read
+Requests/sec:    111.27
+Transfer/sec:    100.27KB
